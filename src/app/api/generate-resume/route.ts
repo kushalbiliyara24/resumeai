@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,13 +27,20 @@ ${form.jobDescription ? `Job Description:\n${form.jobDescription}` : ""}
 
 Write a complete, polished resume. Tailor the summary and bullet points to match the target role. Use 3-5 strong bullet points per job. Include: Header, Professional Summary, Experience, Skills, and Education sections. Make it look like it was written by a professional resume coach.`;
 
-    const message = await client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 2000, temperature: 0.7 },
+        }),
+      }
+    );
 
-    const resume = message.content[0].type === "text" ? message.content[0].text : "";
+    const data = await response.json();
+    const resume = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error generating resume.";
 
     return NextResponse.json({ resume });
   } catch (error) {
